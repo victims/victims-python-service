@@ -145,7 +145,7 @@ def hash_contents(path):
             if True in hashable:
                 full_path = os.path.sep.join([root, file])
                 contents.append({
-                    'name': full_path,
+                    'name': full_path.replace(top_dir + '/', ''),
                     'hash': hash_file(full_path),
                 })
     return contents
