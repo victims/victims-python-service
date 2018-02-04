@@ -47,6 +47,13 @@ HASHABLE_FILE_TYPES = (
     '.pyo',
     '.py',
 )
+#: Logger
+LOGGER = logging.getLogger('python-hash-service')
+LOGGER.setLevel(logging.INFO)
+_HANDLER = logging.StreamHandler()
+_HANDLER.setFormatter(logging.Formatter(
+    '%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+LOGGER.addHandler(_HANDLER)
 
 
 async def handle_health(request):
@@ -61,15 +68,14 @@ async def handle_hash(request):
     Handle a request to hash a Python package.
     """
     write_to = tempfile.mkdtemp()
-    print(write_to)
     try:
-        APP.logger.info('Writing to %s', write_to)
+        LOGGER.info('Writing to %s', write_to)
         package_path = os.path.sep.join([write_to, 'package'])
         with open(package_path, 'wb+') as out_fobj:
             package = await request.post()
             lib = package.get('library2')
             if not lib:
-                print('Nothing in library2 form element')
+                LOGGER.error('Nothing in library2 form element')
                 return BAD_REQUEST
             out_fobj.write(lib.file.read())
 
@@ -78,7 +84,7 @@ async def handle_hash(request):
             lambda r: lib.filename.endswith(r),
             list(SUPPORTED_FILE_TYPES.keys()))
         if True not in supported:
-            print('Bad file type passed in')
+            LOGGER.error('Bad file type passed in')
             return BAD_REQUEST
 
         extract_package(write_to, lib.filename)
@@ -93,6 +99,7 @@ async def handle_hash(request):
 
         return web.Response(text=data, content_type='application/json')
     finally:
+        LOGGER.info('Removing %s', write_to)
         shutil.rmtree(write_to)
 
 
@@ -137,6 +144,7 @@ def find_version(path):
                             return line[9:-1]
                             break
     # This shouldn't happen, but just in case ...
+    LOGGER.warn('Unable to find version for %s', path)
     return 0
 
 
