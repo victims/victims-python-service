@@ -20,6 +20,7 @@ import json
 import logging
 import os
 import shutil
+import tarfile
 import tempfile
 import zipfile
 
@@ -32,12 +33,14 @@ BAD_REQUEST = web.Response(status=400, text='{"error": "bad request"}')
 #: Shortcut for an OK http request
 OK = web.Response(status=200)
 
-#: All supported upload file types
-SUPPORTED_FILE_TYPES = (
-    '.whl',
-    '.egg',
-    '.zip',
-)
+#: All supported upload file types and their opener
+SUPPORTED_FILE_TYPES = {
+    '.whl': zipfile.ZipFile,
+    '.egg': zipfile.ZipFile,
+    '.zip': zipfile.ZipFile,
+    '.tar.gz': tarfile.open,
+    '.tar.bz2': tarfile.open,
+}
 #: All hashable file types
 HASHABLE_FILE_TYPES = (
     '.pyc',
@@ -72,12 +75,13 @@ async def handle_hash(request):
 
         # Must be a supported file type
         supported = map(
-            lambda r: lib.filename.endswith(r), SUPPORTED_FILE_TYPES)
+            lambda r: lib.filename.endswith(r),
+            list(SUPPORTED_FILE_TYPES.keys()))
         if True not in supported:
             print('Bad file type passed in')
             return BAD_REQUEST
 
-        extract_package(write_to)
+        extract_package(write_to, lib.filename)
         version = find_version(write_to)
 
         data = json.dumps({
@@ -100,16 +104,20 @@ def hash_file(path):
         return hashlib.sha512(hf.read()).hexdigest()
 
 
-def extract_package(path):
+def extract_package(path, filename):
     """
     Extracts a python zip based package to a standard location.
     """
     extract_path = os.path.sep.join([path, '_extraction'])
     package_path = os.path.sep.join([path, 'package'])
+    file_type = filename[filename.rindex('.'):]
+    if file_type in ('.gz', '.bz2'):
+        file_type = '.tar' + file_type
+    opener = SUPPORTED_FILE_TYPES[file_type]
     os.mkdir(extract_path)
-    zf = zipfile.ZipFile(package_path, 'r')
-    zf.extractall(extract_path)
-    zf.close()
+    archive = opener(package_path, 'r')
+    archive.extractall(extract_path)
+    archive.close()
 
 
 def find_version(path):

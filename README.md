@@ -4,7 +4,7 @@ Victims Python Service is a microservice that provides Python hash information t
 
 ### How does it work?
 
-the `hash` endpoint is called passing some files to hash. This service explodes the python whl or egg and hashes the code files and package itself. Those hashes are then returned to the caller as JSON.
+the `hash` endpoint is called passing some files to hash. This service explodes the python whl, egg, zip, tar.gz or tar.bz2 and hashes the code files and package itself. Those hashes are then returned to the caller as JSON.
 
 ### API Documentation
 
