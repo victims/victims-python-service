@@ -25,10 +25,25 @@ import zipfile
 
 from aiohttp import web
 
-
+#: Application instance
 APP = web.Application()
+#: Shortcut for a bad http request
 BAD_REQUEST = web.Response(status=400, text='{"error": "bad request"}')
+#: Shortcut for an OK http request
 OK = web.Response(status=200)
+
+#: All supported upload file types
+SUPPORTED_FILE_TYPES = (
+    '.whl',
+    '.egg',
+    '.zip',
+)
+#: All hashable file types
+HASHABLE_FILE_TYPES = (
+    '.pyc',
+    '.pyo',
+    '.py',
+)
 
 
 async def handle_health(request):
@@ -55,8 +70,10 @@ async def handle_hash(request):
                 return BAD_REQUEST
             out_fobj.write(lib.file.read())
 
-        # Must be a wheel or egg
-        if not lib.filename.endswith('.whl') and not lib.filename.endswith('.egg'):
+        # Must be a supported file type
+        supported = map(
+            lambda r: lib.filename.endswith(r), SUPPORTED_FILE_TYPES)
+        if True not in supported:
             print('Bad file type passed in')
             return BAD_REQUEST
 
@@ -123,9 +140,14 @@ def hash_contents(path):
     top_dir = os.path.sep.join([path, '_extraction'])
     for root, dirs, files in os.walk(top_dir):
         for file in files:
-            if file.endswith('.py') or file.endswith('.pyc') or file.endswith('pyo'):
+            hashable = map(
+                lambda r: file.endswith(r), HASHABLE_FILE_TYPES)
+            if True in hashable:
                 full_path = os.path.sep.join([root, file])
-                contents.append({'name': full_path, 'hash': hash_file(full_path)})
+                contents.append({
+                    'name': full_path,
+                    'hash': hash_file(full_path),
+                })
     return contents
 
 
